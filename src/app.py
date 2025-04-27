@@ -14,6 +14,7 @@ from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 # from models import Person
 
@@ -21,6 +22,7 @@ ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '../public/')
 app = Flask(__name__)
+CORS(app)
 app.url_map.strict_slashes = False
 
 app.config["JWT_SECRET_KEY"] = os.getenv('JWT_KEY')  # Change this!
@@ -71,6 +73,38 @@ def serve_any_other_file(path):
     response = send_from_directory(static_file_dir, path)
     response.cache_control.max_age = 0  # avoid cache memory
     return response
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    body = request.get_json(silent=True)
+    if body is None:
+        return jsonify({'msg': 'Debes enviar la información en el body'}), 400
+    
+    if 'email' not in body:
+        return jsonify({'msg': 'El campo email es obligatorio'}), 400
+    if 'password' not in body:
+        return jsonify({'msg': 'El campo password es obligatorio'}), 400
+    
+    user_exists = User.query.filter_by(email=body['email']).first()
+    if user_exists:
+        return jsonify({'msg': 'El email ya está registrado'}), 400
+    
+    new_user = User(
+        email=body['email'],
+        password=body['password'],
+        is_active=True
+    )
+    
+    db.session.add(new_user)
+    try:
+        db.session.commit()
+        return jsonify({
+            'msg': 'Usuario registrado exitosamente',
+            'user': new_user.serialize()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': f'Error al registrar usuario: {str(e)}'}), 500
 
 @app.route('/login', methods=['POST'])
 def login():

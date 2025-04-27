@@ -1,6 +1,9 @@
 export const initialStore=()=>{
+  const token = localStorage.getItem("token");
+
   return{
     message: null,
+    user: token ? { token } : null,
     todos: [
       {
         id: 1,
@@ -23,6 +26,18 @@ export default function storeReducer(store, action = {}) {
         ...store,
         message: action.payload
       };
+
+      case "set_user":
+        return {
+          ...store,
+          user: action.payload,
+        };
+  
+      case "logout":
+        return {
+          ...store,
+          user: null,
+        };
       
     case 'add_task':
 
