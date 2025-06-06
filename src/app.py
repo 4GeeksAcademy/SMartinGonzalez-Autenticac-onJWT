@@ -15,6 +15,7 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 
 # from models import Person
 
@@ -23,6 +24,7 @@ static_file_dir = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '../public/')
 app = Flask(__name__)
 CORS(app)
+bcrypt = Bcrypt(app)
 app.url_map.strict_slashes = False
 
 app.config["JWT_SECRET_KEY"] = os.getenv('JWT_KEY')  # Change this!
@@ -91,7 +93,7 @@ def signup():
     
     new_user = User(
         email=body['email'],
-        password=body['password'],
+        password= bcrypt.generate_password_hash(body['password']).decode('utf-8'),
         is_active=True
     )
     
@@ -119,7 +121,8 @@ def login():
     if user is None:
         return jsonify({'msg':'Email o contraseña invalidos'}), 400
     #2 revisar si contraseña es correcta
-    if body['password'] != user.password:
+    password_valid = bcrypt.check_password_hash(user.password, body['password'])
+    if not password_valid:
         return jsonify({'msg': "Email o contraseña invalidos"}), 400
     #3 crear token
     acces_token = create_access_token(identity= user.email)
